@@ -46,7 +46,7 @@ Missing grades and unparseable dates are exported as `null`.
 Start the development server from the repository root.
 
 ```sh
-python -m uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --reload --no-access-log
 ```
 
 Open `http://127.0.0.1:8000/docs` to try the endpoint in Swagger UI, or use curl.
@@ -55,15 +55,23 @@ Open `http://127.0.0.1:8000/docs` to try the endpoint in Swagger UI, or use curl
 curl --fail-with-body -F 'file=@data/sample.html;type=text/html' http://127.0.0.1:8000/api/parse
 ```
 
-`POST /api/parse` accepts a multipart form with a `file` field. Upload a BARS
-`.html` or `.htm` file of up to 2 MiB with media type `text/html` or
-`application/octet-stream`. The response is a JSON array of subjects in page
-order and uses the same fields, ISO dates, and nulls as the local export.
+`POST /api/parse` accepts one BARS `.html` or `.htm` file in the multipart
+`file` field. The file limit is 5 MB (5,000,000 bytes). The request limit
+allows an additional 64 KiB for multipart headers and boundaries. Use
+`text/html` or `application/octet-stream` for the file's media type. The
+response is a JSON array of subjects in page order and uses the same fields,
+ISO dates, and nulls as the local export.
 
-The API returns `400` for an empty file, `413` for a file over the size
-limit, `415` for an unsupported extension or media type, and `422` for a missing
-file, unreadable HTML, or a page without recognizable BARS subjects. Unexpected
-parser failures return a generic `500` response.
+The API returns `400` for an empty file or malformed multipart form, `413`
+for a file or request over its size limit, `415` for an unsupported extension
+or media type, and `422` for a missing file, unreadable HTML, or a page without
+recognizable BARS subjects. Unexpected parser failures return a generic
+`500` response.
+
+Upload error logs use fixed messages that omit filenames, HTML, and parsed
+grades. The development command disables Uvicorn access logging so request
+URLs stay out of the logs. Keep real BARS files and their exports in the
+Git-ignored `data/` directory.
 
 ## Parser architecture
 
@@ -82,4 +90,5 @@ entry points share the parsing rules.
 
 Run the automated tests from the repository root with `python -m pytest`.
 The parser and API tests use synthetic BARS markup and can run without the
-private sample.
+private sample. Use `python -m pytest tests/test_api.py` to run only the API
+tests.
